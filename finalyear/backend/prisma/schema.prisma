@@ -1,0 +1,137 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  SUPPLIER
+  RETAILER
+  ADMIN
+}
+
+enum OrderStatus {
+  PLACED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role
+  location  String
+  createdAt DateTime @default(now())
+
+  inventory InventoryItem[] @relation("SupplierInventory")
+  orders    Order[]         @relation("RetailerOrders")
+  statusLogs OrderStatusLog[] @relation("AdminLogs")
+}
+
+model InventoryItem {
+  id                String   @id @default(uuid())
+  name              String
+  quantityAvailable Int
+  pricePerUnit      Float
+  unit              String
+  category          String?
+  sustainabilityHash String?
+  supplier          User      @relation("SupplierInventory", fields: [supplierId], references: [id])
+  supplierId        String
+  createdAt         DateTime @default(now())
+
+  orderItems  OrderItem[]
+  predictions Prediction[]
+  salesTransactions SalesTransaction[] 
+}
+
+model Order {
+  id           String       @id @default(uuid())
+  retailer     User         @relation("RetailerOrders", fields: [retailerId], references: [id])
+  retailerId   String
+  status       OrderStatus  @default(PLACED)
+  placedAt     DateTime     @default(now())
+  deliveredAt  DateTime?
+
+  orderItems   OrderItem[]
+  statusLogs   OrderStatusLog[]
+}
+
+model OrderItem {
+  id        String         @id @default(uuid())
+  order     Order          @relation(fields: [orderId], references: [id])
+  orderId   String
+  item      InventoryItem  @relation(fields: [itemId], references: [id])
+  itemId    String
+  quantity  Int
+}
+
+model OrderStatusLog {
+  id        String      @id @default(uuid())
+  order     Order       @relation(fields: [orderId], references: [id])
+  orderId   String
+  status    OrderStatus
+  timestamp DateTime    @default(now())
+  location  String?
+
+  updatedByAdmin   User?   @relation("AdminLogs", fields: [updatedByAdminId], references: [id])
+  updatedByAdminId String?
+}
+
+
+model Prediction {
+  id              String         @id @default(uuid())
+  item            InventoryItem  @relation(fields: [itemId], references: [id])
+  itemId          String
+  predictedDemand Int
+  forMonth        String         // e.g., "2025-06"
+  createdAt       DateTime       @default(now())
+}
+
+// this stores the actual ground sales from the csv , which will be used to predict 
+model SalesTransaction {
+  id             String         @id @default(uuid())
+  invoiceId      String?        // Invoice ID from CSV (optional)
+  date           DateTime       // Combined date and time ideally, or separate if needed
+  time           String?        // Optional: keep time as string or convert to DateTime
+  item           InventoryItem  @relation(fields: [itemId], references: [id])
+  itemId         String
+  quantitySold   Int            // Quantity sold
+  storeBranch    String         // Branch/store location
+  city           String         // City location
+  customerType   String?        // Member, Normal (optional)
+  payment        String?        // Payment method (optional)
+  unitPrice      Float          // Price per unit
+  total          Float          // Total sale amount
+  rating         Float?         // Customer rating (optional)
+}
+
+//optional
+
+model CalendarDate {
+  date        DateTime @id
+  year        Int
+  month       Int
+  day         Int
+  weekday     Int       // 1=Monday, 7=Sunday
+  isWeekend   Boolean
+  isHoliday   Boolean?
+}
+
+// model Customer {
+//   id         String            @id @default(uuid())
+//   type       String            // Member, Normal
+//   location   String?
+//   transactions SalesTransaction[]
+// }
