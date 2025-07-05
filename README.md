@@ -47,8 +47,12 @@ scripts/    # Utility scripts
    npm start
    ```
 
-6. **(Optional) Frontend setup:**
-   - Navigate to the `frontend` folder and follow its setup instructions (if implemented).
+6. **Frontend setup:**
+   - Navigate to the `frontend` folder
+   - ```sh
+     cd frontend
+     npm start
+     ```
 
 ## Usage
 - The backend server will run on the configured port (default: 3000).
